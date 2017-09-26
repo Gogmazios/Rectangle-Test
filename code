@@ -1,0 +1,281 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace rec
+{   
+    public partial class Form1 : Form
+    {
+        // create graphics object
+        Graphics graphObj;
+
+        public Form1()
+        {
+            InitializeComponent();
+
+            // set graphics object
+            graphObj = panelRec.CreateGraphics();
+        }
+
+        // RNG
+        Random randNum = new Random();
+
+        // Generate rectangles
+        private void generateRectangles()
+        {
+            // pen color and width
+            Pen blackPen = new Pen(Color.FromArgb(255, 0, 0, 0), 1);
+            Pen bluePen = new Pen(Color.FromArgb(255, 0, 0, 255), 1);
+
+            // width and height of first rectangle
+            int width1 = 150;
+            int height1 = 75;
+
+            // width and height of second rectangle
+            int width2 = 90;
+            int height2 = 30;
+
+            // randomize location of first rectangle
+            int randX1 = randNum.Next(10, 200);
+            int randY1 = randNum.Next(10, 175);
+
+            // randomize location of second rectangle
+            int randX2 = randNum.Next(10, 255);
+            int randY2 = randNum.Next(10, 175);
+
+            // forced adjacency, otherwise it's hard to test
+            if (checkAdjacency.Checked == true)
+            {
+                randX2 = randX1;
+                randY2 = randY1 - 31;
+            }
+
+            // generate the first rectangle (x, y, width, height)
+            Rectangle recFirst = new Rectangle(randX1, randY1, width1, height1);
+            graphObj.DrawRectangle(blackPen, randX1, randY1, width1, height1);
+
+            // generate the second rectangle
+            Rectangle recSecond = new Rectangle(randX2, randY2, width2, height2);
+            graphObj.DrawRectangle(bluePen, randX2, randY2, width2, height2);
+
+            // set these regardless of visibility
+            labelRecFirstTop.Text = "Y: " + recFirst.Top.ToString();
+            labelRecFirstBottom.Text = "Y: " + recFirst.Bottom.ToString();
+            labelRecFirstLeft.Text = "X: " + recFirst.Left.ToString();
+            labelRecFirstRight.Text = "X: " + recFirst.Right.ToString();
+            labelRecSecondTop.Text = "Y: " + recSecond.Top.ToString();
+            labelRecSecondBottom.Text = "Y: " + recSecond.Bottom.ToString();
+            labelRecSecondLeft.Text = "X: " + recSecond.Left.ToString();
+            labelRecSecondRight.Text = "X: " + recSecond.Right.ToString();        
+
+            // determine characteristics
+            determineCharacteristics(recFirst, recSecond, width1, height1, width2, height2, randX1, randY1, randX2, randY2);
+        }
+
+        /* Determine intersection, containment, and adjacency.
+           All conditions override all other conditions. 
+           Shared pixels count as neither adjacency nor intersection. */
+        private void determineCharacteristics(Rectangle recFirst, Rectangle recSecond, int width1, int height1, int width2, int height2, int randX1, int randY1, int randX2, int randY2)
+        {
+            // Does one rectangle contain the other?
+            if ((recFirst.Contains(recSecond)) || (recSecond.Contains(recFirst)))
+            {
+                // Yes, containment exists
+                feedbackContainment.ForeColor = Color.Green;
+                feedbackContainment.Text = "One rectangle contains the other.";
+
+                // Override
+                feedbackIntersection.ForeColor = Color.Red;
+                feedbackIntersection.Text = "The rectangles do not intersect.";
+                feedbackAdjacency.ForeColor = Color.Red;
+                feedbackAdjacency.Text = "The rectangles are not adjacent.";
+            }
+            else
+            {
+                // No containment
+                feedbackContainment.ForeColor = Color.Red;
+                feedbackContainment.Text = "Neither rectangle contains the other.";
+
+                // Do the rectangles intersect?
+                if (recFirst.IntersectsWith(recSecond))
+                {
+                    // Yes, they intersect
+                    feedbackIntersection.ForeColor = Color.Green;
+                    feedbackIntersection.Text = "The rectangles intersect.";
+
+                    // Override
+                    feedbackAdjacency.ForeColor = Color.Red;
+                    feedbackAdjacency.Text = "The rectangles are not adjacent.";
+                    feedbackContainment.ForeColor = Color.Red;
+                    feedbackContainment.Text = "Neither rectangle contains the other.";
+
+                    /* Highlight the intersecting points.
+                       There are eight possible configurations,
+                       with differing points of intersection. */
+
+                    // Rectangle created by the intersection
+                    Rectangle crossRectangle = Rectangle.Intersect(recFirst, recSecond);
+                    int crossX1, crossY1, crossX2, crossY2;
+
+                    // First three possiblities
+                    if (randX1 > randX2)
+                    {
+                        if (randY1 < randY2)
+                        {
+                            /* Only two will match.
+                               Use origin of new rectangle,
+                               then measure for second POI. */
+                            crossX1 = crossRectangle.Left;
+                            crossY1 = crossRectangle.Top;
+
+                            if (recSecond.Bottom > recFirst.Bottom)
+                            {
+                                crossX2 = recSecond.Right;
+                                crossY2 = recFirst.Bottom;
+                            }
+                            else
+                            {
+                                crossX2 = recFirst.Left;
+                                crossY2 = recSecond.Bottom;
+                            }
+                        }
+                        else // single exception
+                        {
+                            crossX1 = recFirst.Left;
+                            crossY1 = recSecond.Bottom;
+                            crossX2 = recSecond.Right;
+                            crossY2 = recFirst.Top;
+                        }
+                    }
+                    else // Remaining five possible configurations
+                    {
+                        if (randY1 > randY2)
+                        {
+                            /* Two possibilities will match.
+                               Origin is POI, calculate 2nd. */
+                            crossX1 = crossRectangle.Left;
+                            crossY1 = crossRectangle.Top;
+
+                            if (recSecond.Right > recFirst.Right)
+                            {
+                                crossX2 = recFirst.Right;
+                                crossY2 = recSecond.Bottom;
+                            }
+                            else
+                            {
+                                crossX2 = recSecond.Right;
+                                crossY2 = recFirst.Top;
+                            }
+                        }
+                        else // Three exceptions
+                        {
+                            if (recSecond.Bottom > recFirst.Bottom)
+                            {
+                                crossX1 = recSecond.Left;
+                                crossY1 = recFirst.Bottom;
+
+                                if (recSecond.Right > recFirst.Right)
+                                {
+                                    crossX2 = recFirst.Right;
+                                    crossY2 = recSecond.Top;
+                                }
+                                else
+                                {
+                                    crossX2 = recSecond.Right;
+                                    crossY2 = recFirst.Bottom;
+                                }
+                            }
+                            else // one exception
+                            {
+                                crossX1 = recFirst.Right;
+                                crossY1 = recSecond.Top;
+                                crossX2 = recFirst.Right;
+                                crossY2 = recSecond.Bottom;
+                            }
+                        }
+                    }
+
+                    // draw a small identifier for intersecting points
+                    Pen greenPen = new Pen(Color.FromArgb(255, 0, 204, 0), 1);
+                    graphObj.DrawEllipse(greenPen, crossX1 - 3, crossY1 - 3, 6, 6);
+                    graphObj.DrawEllipse(greenPen, crossX2 - 3, crossY2 - 3, 6, 6);
+
+                }
+                else
+                {
+                    // No, they do not intersect
+                    feedbackIntersection.ForeColor = Color.Red;
+                    feedbackIntersection.Text = "The rectangles do not intersect.";
+
+                    // Are the rectangles adjacent?
+                    bool bottom =recFirst.Bottom == recSecond.Top - 1;
+                    bool top = recSecond.Bottom == recFirst.Top - 1;
+                    bool right = recFirst.Right == recSecond.Left - 1;
+                    bool left = recSecond.Right == recFirst.Left - 1;
+                    bool xRange = (recSecond.Right >= recFirst.Left) && (recSecond.Left <= recFirst.Right);
+                    bool yRange = (recSecond.Bottom >= recFirst.Top) && (recSecond.Top <= recFirst.Bottom);
+
+                    if (((bottom || top) && xRange) || ((right || left) && yRange))
+                    {
+                        // Yes, they are adjacent.
+                        feedbackAdjacency.ForeColor = Color.Green;
+                        feedbackAdjacency.Text = "The rectangles are adjacent.";
+
+                        // Override
+                        feedbackContainment.ForeColor = Color.Red;
+                        feedbackContainment.Text = "Neither rectangle contains the other.";
+                        feedbackIntersection.ForeColor = Color.Red;
+                        feedbackIntersection.Text = "The rectangles do not intersect.";
+                    }
+                    else
+                    {
+                        // No, they are not adjacent.
+                        feedbackAdjacency.ForeColor = Color.Red;
+                        feedbackAdjacency.Text = "The rectangles are not adjacent.";
+                    }
+                }
+            }
+
+        }
+
+        // Generate rectangles
+        private void buttonGenerate_Click(object sender, EventArgs e)
+        {
+            // clear the panel
+            panelRec.Refresh();
+
+            // clear the labels
+            feedbackAdjacency.Text = "";
+            feedbackContainment.Text = "";
+            feedbackIntersection.Text = "";
+
+            // generate rectangles
+            generateRectangles();
+        }
+
+        // Toggle X, Y value display
+        private void checkDisplayPointsClicked(object sender, EventArgs e)
+        {
+            if (checkDisplayPoints.Checked == false)
+            {
+                panelDisplayValues.Visible = false;
+            }
+            else
+            {
+                panelDisplayValues.Visible = true;
+            }
+        }
+
+        // exit
+        private void buttonExit_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+    }
+}
